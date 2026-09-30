@@ -1,0 +1,1209 @@
+<!DOCTYPE html>
+<html lang="zh-Hant-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>臺中市外送員交通事故統計儀表板 | Taichung Food Delivery Driver Accident Dashboard</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#f0f7ff',
+              100: '#e0effe',
+              500: '#0284c7',
+              600: '#0369a1',
+              700: '#075985',
+              900: '#0c4a6e',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Lucide Icons CDN -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Google Fonts: Inter & Noto Sans TC -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+TC:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    body {
+      font-family: 'Inter', 'Noto Sans TC', system-ui, -apple-system, sans-serif;
+      background-color: #ffffff;
+    }
+    .white-card {
+      background-color: #ffffff;
+      border: 1px solid #e2e8f0;
+    }
+    .dark body {
+      background-color: #020617;
+    }
+    .dark .white-card {
+      background-color: #0f172a;
+      border-color: #1e293b;
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 4px;
+    }
+    .dark .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #475569;
+    }
+  </style>
+</head>
+<body class="bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-100 min-h-screen flex flex-col transition-colors duration-200">
+
+  <!-- TOP NAVIGATION HEADER -->
+  <header class="sticky top-0 z-40 bg-white/95 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 px-4 lg:px-8 py-3.5 shadow-sm">
+    <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-4">
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-sky-600 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-sky-500/20">
+          <i data-lucide="bike" class="w-6 h-6"></i>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 id="i18n-appTitle" class="text-xl font-bold tracking-tight text-slate-900 dark:text-white">臺中市外送員交通事故統計儀表板</h1>
+            <span class="text-xs px-2 py-0.5 font-medium rounded-full bg-sky-100 text-sky-800 dark:bg-sky-900/50 dark:text-sky-300 border border-sky-200 dark:border-sky-800">2022 - 2026</span>
+          </div>
+          <p id="i18n-appSubtitle" class="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1.5 mt-0.5">
+            <i data-lucide="database" class="w-3.5 h-3.5"></i> 資料來源：臺中市政府資料開放平臺 ｜ 權管單位：臺中市政府警察局
+          </p>
+        </div>
+      </div>
+
+      <!-- Action Buttons & Language Switcher -->
+      <div class="flex items-center gap-2">
+        <!-- Language Switcher -->
+        <div class="flex items-center bg-slate-100 dark:bg-slate-800 rounded-lg p-0.5 border border-slate-200 dark:border-slate-700 text-xs font-semibold">
+          <button id="langZhBtn" class="px-2.5 py-1.5 rounded-md bg-white dark:bg-slate-700 text-sky-700 dark:text-sky-300 shadow-sm transition">繁體中文</button>
+          <button id="langEnBtn" class="px-2.5 py-1.5 rounded-md text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition">English</button>
+        </div>
+
+        <!-- Dark/Light Mode Toggle -->
+        <button id="themeToggleBtn" class="p-2 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 transition" title="切換深淺模式 / Toggle Theme">
+          <i data-lucide="moon" id="themeIcon" class="w-5 h-5"></i>
+        </button>
+
+        <!-- CSV Export Button -->
+        <button id="exportCsvBtn" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-lg shadow-sm transition">
+          <i data-lucide="download" class="w-3.5 h-3.5 text-slate-500"></i> <span id="i18n-exportBtn">匯出 CSV</span>
+        </button>
+
+        <!-- Reset Filters -->
+        <button id="refreshDataBtn" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-sky-600 hover:bg-sky-700 rounded-lg shadow-sm shadow-sky-600/20 transition">
+          <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i> <span id="i18n-resetBtn">重設篩選</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN CONTAINER -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 lg:px-8 py-6 space-y-6 bg-white dark:bg-slate-950">
+
+    <!-- INTERACTIVE FILTER PANEL -->
+    <section class="white-card rounded-2xl p-5 shadow-sm">
+      <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-slate-200 dark:border-slate-800">
+        <div class="flex items-center gap-2">
+          <i data-lucide="sliders-horizontal" class="w-5 h-5 text-sky-600 dark:text-sky-400"></i>
+          <h2 id="i18n-filterTitle" class="font-semibold text-slate-900 dark:text-slate-100">維度篩選與分析條件</h2>
+          <span id="activeFilterBadge" class="text-xs bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-2.5 py-0.5 rounded-full">全部年份 ｜ 全部類別</span>
+        </div>
+        <div class="flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400">
+          <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-emerald-500"></span><span id="i18n-legendOfficial">官方核定數據</span></span>
+          <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-amber-500"></span><span id="i18n-legendForecast">初估/預測數據</span></span>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-5 mt-4">
+        <!-- Filter 1: Year Selector -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+            <i data-lucide="calendar" class="w-3.5 h-3.5 text-sky-500"></i> <span id="i18n-labelYear">1. 選擇統計年份 (Year)</span>
+          </label>
+          <div class="grid grid-cols-6 gap-1.5 bg-slate-50 dark:bg-slate-900 p-1.5 rounded-xl border border-slate-200 dark:border-slate-800">
+            <button class="year-btn active text-xs font-medium py-1.5 rounded-lg text-center transition" data-year="ALL" id="i18n-yearAll">全部</button>
+            <button class="year-btn text-xs font-medium py-1.5 rounded-lg text-center transition text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white" data-year="2022">2022</button>
+            <button class="year-btn text-xs font-medium py-1.5 rounded-lg text-center transition text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white" data-year="2023">2023</button>
+            <button class="year-btn text-xs font-medium py-1.5 rounded-lg text-center transition text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white" data-year="2024">2024</button>
+            <button class="year-btn text-xs font-medium py-1.5 rounded-lg text-center transition text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white" data-year="2025">2025</button>
+            <button class="year-btn text-xs font-medium py-1.5 rounded-lg text-center transition text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white" data-year="2026">2026</button>
+          </div>
+        </div>
+
+        <!-- Filter 2: Category Selector -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+            <i data-lucide="layers" class="w-3.5 h-3.5 text-indigo-500"></i> <span id="i18n-labelCategory">2. 選擇事故類別 (Category)</span>
+          </label>
+          <div class="grid grid-cols-4 gap-1.5 bg-slate-50 dark:bg-slate-900 p-1.5 rounded-xl border border-slate-200 dark:border-slate-800">
+            <button class="cat-btn active text-xs font-medium py-1.5 rounded-lg text-center transition" data-cat="ALL" id="i18n-catAll">全部類別</button>
+            <button class="cat-btn text-xs font-medium py-1.5 rounded-lg text-center transition text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white" data-cat="A1" id="i18n-catA1">A1 (死亡)</button>
+            <button class="cat-btn text-xs font-medium py-1.5 rounded-lg text-center transition text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white" data-cat="A2" id="i18n-catA2">A2 (受傷)</button>
+            <button class="cat-btn text-xs font-medium py-1.5 rounded-lg text-center transition text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white" data-cat="A3" id="i18n-catA3">A3 (財損)</button>
+          </div>
+        </div>
+
+        <!-- Filter 3: Metric Dimension -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+            <i data-lucide="bar-chart-2" class="w-3.5 h-3.5 text-emerald-500"></i> <span id="i18n-labelMetric">3. 統計指標度量 (Metric)</span>
+          </label>
+          <select id="metricSelect" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 text-xs rounded-xl px-3 py-2.5 font-medium focus:ring-2 focus:ring-sky-500 focus:outline-none">
+            <option value="incidents" id="i18n-optIncidents">事故發生件數 (Incidents)</option>
+            <option value="injuries" id="i18n-optInjuries">受傷人數 (Injured Persons)</option>
+            <option value="fatalities" id="i18n-optFatalities">死亡人數 (Fatalities)</option>
+          </select>
+        </div>
+      </div>
+    </section>
+
+    <!-- KPI CARDS SUMMARY -->
+    <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <!-- KPI 1 -->
+      <div class="white-card rounded-2xl p-5 shadow-sm relative overflow-hidden">
+        <div class="flex items-center justify-between">
+          <span id="i18n-kpi1Title" class="text-xs font-medium text-slate-500 dark:text-slate-400">總交通事故件數</span>
+          <span class="p-2 rounded-xl bg-sky-50 dark:bg-sky-950/60 text-sky-600 dark:text-sky-400 border border-sky-100 dark:border-sky-900">
+            <i data-lucide="alert-triangle" class="w-5 h-5"></i>
+          </span>
+        </div>
+        <div class="mt-3">
+          <div class="flex items-baseline gap-2">
+            <span id="kpiTotalIncidents" class="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">0</span>
+            <span id="i18n-kpi1Unit" class="text-xs text-slate-500">件</span>
+          </div>
+          <p class="text-xs text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-1">
+            <span id="i18n-kpi1Sub">篩選範圍內總計案件數</span>
+          </p>
+        </div>
+      </div>
+
+      <!-- KPI 2 -->
+      <div class="white-card rounded-2xl p-5 shadow-sm relative overflow-hidden">
+        <div class="flex items-center justify-between">
+          <span id="i18n-kpi2Title" class="text-xs font-medium text-slate-500 dark:text-slate-400">A1 類 (24H內死亡)</span>
+          <span class="p-2 rounded-xl bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 border border-rose-100 dark:border-rose-900">
+            <i data-lucide="skull" class="w-5 h-5"></i>
+          </span>
+        </div>
+        <div class="mt-3">
+          <div class="flex items-baseline gap-2">
+            <span id="kpiA1Count" class="text-3xl font-bold tracking-tight text-rose-600 dark:text-rose-400">0</span>
+            <span id="i18n-kpi2Unit" class="text-xs text-slate-500">件</span>
+          </div>
+          <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">
+            <span id="i18n-kpi2Sub">死亡人數：</span><span id="kpiFatalitiesCount" class="font-bold text-slate-700 dark:text-slate-300">0</span> <span id="i18n-unitPerson">人</span>
+          </p>
+        </div>
+      </div>
+
+      <!-- KPI 3 -->
+      <div class="white-card rounded-2xl p-5 shadow-sm relative overflow-hidden">
+        <div class="flex items-center justify-between">
+          <span id="i18n-kpi3Title" class="text-xs font-medium text-slate-500 dark:text-slate-400">A2 類 (人員受傷)</span>
+          <span class="p-2 rounded-xl bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 border border-amber-100 dark:border-amber-900">
+            <i data-lucide="activity" class="w-5 h-5"></i>
+          </span>
+        </div>
+        <div class="mt-3">
+          <div class="flex items-baseline gap-2">
+            <span id="kpiA2Count" class="text-3xl font-bold tracking-tight text-amber-600 dark:text-amber-400">0</span>
+            <span id="i18n-kpi3Unit" class="text-xs text-slate-500">件</span>
+          </div>
+          <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">
+            <span id="i18n-kpi3Sub">累積受傷：</span><span id="kpiInjuredCount" class="font-bold text-amber-600 dark:text-amber-400">0</span> <span id="i18n-unitPerson2">人</span>
+          </p>
+        </div>
+      </div>
+
+      <!-- KPI 4 -->
+      <div class="white-card rounded-2xl p-5 shadow-sm relative overflow-hidden">
+        <div class="flex items-center justify-between">
+          <span id="i18n-kpi4Title" class="text-xs font-medium text-slate-500 dark:text-slate-400">A3 類 (純財物車損)</span>
+          <span class="p-2 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-900">
+            <i data-lucide="shield-alert" class="w-5 h-5"></i>
+          </span>
+        </div>
+        <div class="mt-3">
+          <div class="flex items-baseline gap-2">
+            <span id="kpiA3Count" class="text-3xl font-bold tracking-tight text-indigo-600 dark:text-indigo-400">0</span>
+            <span id="i18n-kpi4Unit" class="text-xs text-slate-500">件</span>
+          </div>
+          <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">
+            <span id="i18n-kpi4Sub">佔整體事故比重：</span><span id="kpiA3Ratio" class="font-bold text-slate-700 dark:text-slate-300">0%</span>
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- CHARTS SECTION 1: TREND ANALYSIS -->
+    <section class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <!-- Main Trend Line Chart -->
+      <div class="lg:col-span-2 white-card rounded-2xl p-5 shadow-sm">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
+          <div>
+            <h3 id="i18n-chart1Title" class="font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <i data-lucide="trending-up" class="w-5 h-5 text-sky-600"></i>
+              2022-2026 年季度變化趨勢 (Quarterly Trend)
+            </h3>
+            <p id="i18n-chart1Sub" class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">跨年度各季度發生件數與受傷人數走向分析</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="text-xs px-2.5 py-1 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+              <span id="i18n-avgLabel">季平均：</span><span id="avgQuarterlyCount" class="font-bold text-sky-600 dark:text-sky-400">0</span> <span id="i18n-avgUnit">件</span>
+            </span>
+          </div>
+        </div>
+        <div class="h-80 w-full">
+          <canvas id="trendChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Category Share Doughnut Chart -->
+      <div class="white-card rounded-2xl p-5 shadow-sm flex flex-col">
+        <div class="mb-4">
+          <h3 id="i18n-chart2Title" class="font-bold text-slate-900 dark:text-white flex items-center gap-2">
+            <i data-lucide="pie-chart" class="w-5 h-5 text-indigo-600"></i>
+            事故類別結構分佈
+          </h3>
+          <p id="i18n-chart2Sub" class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">A1 (死亡)、A2 (受傷)、A3 (車損)</p>
+        </div>
+        <div class="flex-1 flex items-center justify-center relative min-h-[220px]">
+          <canvas id="categoryChart"></canvas>
+        </div>
+        <div class="mt-4 pt-3 border-t border-slate-200 dark:border-slate-800 grid grid-cols-3 text-center text-xs">
+          <div>
+            <span class="text-rose-500 font-bold block" id="donutA1Pct">0%</span>
+            <span class="text-slate-400" id="i18n-donutA1">A1 死亡</span>
+          </div>
+          <div>
+            <span class="text-amber-500 font-bold block" id="donutA2Pct">0%</span>
+            <span class="text-slate-400" id="i18n-donutA2">A2 受傷</span>
+          </div>
+          <div>
+            <span class="text-indigo-500 font-bold block" id="donutA3Pct">0%</span>
+            <span class="text-slate-400" id="i18n-donutA3">A3 車損</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CHARTS SECTION 2: COMPARISON & SEASONALITY -->
+    <section class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <!-- Yearly Comparison Grouped Bar Chart -->
+      <div class="white-card rounded-2xl p-5 shadow-sm">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h3 id="i18n-chart3Title" class="font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <i data-lucide="bar-chart" class="w-5 h-5 text-emerald-600"></i>
+              年度總計對比 (2022 vs 2023 vs 2024 vs 2025 vs 2026)
+            </h3>
+            <p id="i18n-chart3Sub" class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">歷年總事故件數與年增率 (YoY)</p>
+          </div>
+        </div>
+        <div class="h-64 w-full">
+          <canvas id="yearlyBarChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Injury Severity & Impact Chart -->
+      <div class="white-card rounded-2xl p-5 shadow-sm">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h3 id="i18n-chart4Title" class="font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <i data-lucide="heart-pulse" class="w-5 h-5 text-rose-500"></i>
+              受傷人數 vs 發生件數 (傷損關聯指標)
+            </h3>
+            <p id="i18n-chart4Sub" class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">每件 A2 受傷事故之平均受傷人數趨勢</p>
+          </div>
+        </div>
+        <div class="h-64 w-full">
+          <canvas id="injuryRatioChart"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <!-- DATA TABLE & GLOSSARY -->
+    <section class="white-card rounded-2xl p-5 shadow-sm">
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
+        <div>
+          <h3 id="i18n-tableTitle" class="font-bold text-slate-900 dark:text-white flex items-center gap-2">
+            <i data-lucide="table" class="w-5 h-5 text-sky-600"></i>
+            詳細季度統計明細表
+          </h3>
+          <p id="i18n-tableSub" class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">包含所有篩選條件下的完整記錄（可直接搜尋或排序）</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <div class="relative">
+            <i data-lucide="search" class="w-4 h-4 absolute left-3 top-2.5 text-slate-400"></i>
+            <input type="text" id="tableSearchInput" placeholder="搜尋年份、季度、類別..." class="pl-9 pr-3 py-1.5 text-xs rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-sky-500 w-60">
+          </div>
+        </div>
+      </div>
+
+      <div class="overflow-x-auto custom-scrollbar border border-slate-200 dark:border-slate-800 rounded-xl">
+        <table class="w-full text-left text-xs border-collapse">
+          <thead>
+            <tr class="bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-b border-slate-200 dark:border-slate-800">
+              <th id="thYear" class="py-3 px-4 font-semibold">統計年份</th>
+              <th id="thQuarter" class="py-3 px-4 font-semibold">統計季度</th>
+              <th id="thDept" class="py-3 px-4 font-semibold">主管機關 / 代碼</th>
+              <th id="thCategory" class="py-3 px-4 font-semibold">事故類別</th>
+              <th id="thIncidents" class="py-3 px-4 font-semibold text-right">發生件數 (件)</th>
+              <th id="thFatalities" class="py-3 px-4 font-semibold text-right">死亡人數 (人)</th>
+              <th id="thInjuries" class="py-3 px-4 font-semibold text-right">受傷人數 (人)</th>
+              <th id="thStatus" class="py-3 px-4 font-semibold text-center">資料狀態</th>
+            </tr>
+          </thead>
+          <tbody id="dataTableBody" class="divide-y divide-slate-200 dark:divide-slate-800 bg-white dark:bg-slate-950/40">
+            <!-- Table rows generated by JS -->
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Category Definition Notes -->
+      <div class="mt-6 pt-4 border-t border-slate-200 dark:border-slate-800 grid grid-cols-1 md:grid-cols-3 gap-4 text-xs text-slate-600 dark:text-slate-400">
+        <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800">
+          <div class="font-bold text-rose-600 dark:text-rose-400 flex items-center gap-1.5 mb-1">
+            <span class="w-2 h-2 rounded-full bg-rose-500"></span> <span id="i18n-glossaryA1Title">A1 類交通事故</span>
+          </div>
+          <p id="i18n-glossaryA1Desc">造成人員當場或二十四小時內死亡之交通事故。</p>
+        </div>
+        <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800">
+          <div class="font-bold text-amber-600 dark:text-amber-400 flex items-center gap-1.5 mb-1">
+            <span class="w-2 h-2 rounded-full bg-amber-500"></span> <span id="i18n-glossaryA2Title">A2 類交通事故</span>
+          </div>
+          <p id="i18n-glossaryA2Desc">造成人員受傷或超過二十四小時死亡之交通事故（佔整體傷損主要宗數）。</p>
+        </div>
+        <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800">
+          <div class="font-bold text-indigo-600 dark:text-indigo-400 flex items-center gap-1.5 mb-1">
+            <span class="w-2 h-2 rounded-full bg-indigo-500"></span> <span id="i18n-glossaryA3Title">A3 類交通事故</span>
+          </div>
+          <p id="i18n-glossaryA3Desc">僅有車輛或財物損壞，無人員傷亡之交通事故。</p>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- FOOTER -->
+  <footer class="mt-auto border-t border-slate-200 dark:border-slate-800 py-6 bg-white dark:bg-slate-900 text-center text-xs text-slate-500 dark:text-slate-400">
+    <div class="max-w-7xl mx-auto px-4">
+      <p id="i18n-footerText">臺中市外送員交通事故數據分析儀表板 ｜ 串接臺中市政府 Open Data API ｜ 更新統計區間：2022 ~ 2026</p>
+    </div>
+  </footer>
+
+  <!-- JAVASCRIPT & I18N LOGIC -->
+  <script>
+    // ==========================================
+    // 1. I18N DICTIONARY
+    // ==========================================
+    const translations = {
+      zh: {
+        appTitle: "臺中市外送員交通事故統計儀表板",
+        appSubtitle: "資料來源：臺中市政府資料開放平臺 ｜ 權管單位：臺中市政府警察局",
+        exportBtn: "匯出 CSV",
+        resetBtn: "重設篩選",
+        filterTitle: "維度篩選與分析條件",
+        legendOfficial: "官方核定數據",
+        legendForecast: "初估/預測數據",
+        labelYear: "1. 選擇統計年份 (Year)",
+        labelCategory: "2. 選擇事故類別 (Category)",
+        labelMetric: "3. 統計指標度量 (Metric)",
+        yearAll: "全部",
+        catAll: "全部類別",
+        catA1: "A1 (死亡)",
+        catA2: "A2 (受傷)",
+        catA3: "A3 (財損)",
+        optIncidents: "事故發生件數 (Incidents)",
+        optInjuries: "受傷人數 (Injured Persons)",
+        optFatalities: "死亡人數 (Fatalities)",
+        kpi1Title: "總交通事故件數",
+        kpi1Unit: "件",
+        kpi1Sub: "篩選範圍內總計案件數",
+        kpi2Title: "A1 類 (24H內死亡)",
+        kpi2Unit: "件",
+        kpi2Sub: "死亡人數：",
+        unitPerson: "人",
+        unitPerson2: "人",
+        kpi3Title: "A2 類 (人員受傷)",
+        kpi3Unit: "件",
+        kpi3Sub: "累積受傷：",
+        kpi4Title: "A3 類 (純財物車損)",
+        kpi4Unit: "件",
+        kpi4Sub: "佔整體事故比重：",
+        chart1Title: "2022-2026 年季度變化趨勢 (Quarterly Trend)",
+        chart1Sub: "跨年度各季度發生件數與受傷人數走向分析",
+        avgLabel: "季平均：",
+        avgUnit: "件",
+        chart2Title: "事故類別結構分佈",
+        chart2Sub: "A1 (死亡)、A2 (受傷)、A3 (車損)",
+        donutA1: "A1 死亡",
+        donutA2: "A2 受傷",
+        donutA3: "A3 車損",
+        chart3Title: "年度總計對比 (2022 vs 2023 vs 2024 vs 2025 vs 2026)",
+        chart3Sub: "歷年總事故件數與年增率 (YoY)",
+        chart4Title: "受傷人數 vs 發生件數 (傷損關聯指標)",
+        chart4Sub: "每件 A2 受傷事故之平均受傷人數趨勢",
+        tableTitle: "詳細季度統計明細表",
+        tableSub: "包含所有篩選條件下的完整記錄（可直接搜尋或排序）",
+        tableSearchPlaceholder: "搜尋年份、季度、類別...",
+        thYear: "統計年份",
+        thQuarter: "統計季度",
+        thDept: "主管機關 / 代碼",
+        thCategory: "事故類別",
+        thIncidents: "發生件數 (件)",
+        thFatalities: "死亡人數 (人)",
+        thInjuries: "受傷人數 (人)",
+        thStatus: "資料狀態",
+        glossaryA1Title: "A1 類交通事故",
+        glossaryA1Desc: "造成人員當場或二十四小時內死亡之交通事故。",
+        glossaryA2Title: "A2 類交通事故",
+        glossaryA2Desc: "造成人員受傷或超過二十四小時死亡之交通事故（佔整體傷損主要宗數）。",
+        glossaryA3Title: "A3 類交通事故",
+        glossaryA3Desc: "僅有車輛或財物損壞，無人員傷亡之交通事故。",
+        footerText: "臺中市外送員交通事故數據分析儀表板 ｜ 串接臺中市政府 Open Data API ｜ 更新統計區間：2022 ~ 2026",
+        deptName: "臺中市警察局 (66000)",
+        statusOfficial: "官方核定",
+        statusPrelim: "初估",
+        statusForecast: "預估",
+        statusApproved: "核定",
+        noData: "無符合條件之統計數據",
+        catA1Full: "A1 (死亡事故)",
+        catA2Full: "A2 (受傷事故)",
+        catA3Full: "A3 (車損事故)",
+        metricLabelIncidents: "發生件數 (件)",
+        metricLabelInjuries: "受傷人數 (人)",
+        metricLabelFatalities: "死亡人數 (人)",
+        injuryPerAccidentLabel: "A2 受傷事故平均傷損率 (人/件)"
+      },
+      en: {
+        appTitle: "Taichung Delivery Driver Traffic Accident Dashboard",
+        appSubtitle: "Source: Taichung Open Data Platform | Agency: Taichung City Police Department",
+        exportBtn: "Export CSV",
+        resetBtn: "Reset Filters",
+        filterTitle: "Dimension Filters & Criteria",
+        legendOfficial: "Official Certified Data",
+        legendForecast: "Preliminary / Forecast",
+        labelYear: "1. Select Year",
+        labelCategory: "2. Select Accident Category",
+        labelMetric: "3. Statistical Metric",
+        yearAll: "All",
+        catAll: "All Categories",
+        catA1: "A1 (Fatal)",
+        catA2: "A2 (Injury)",
+        catA3: "A3 (Property)",
+        optIncidents: "Accident Cases (Incidents)",
+        optInjuries: "Injured Persons",
+        optFatalities: "Fatalities",
+        kpi1Title: "Total Traffic Accidents",
+        kpi1Unit: "cases",
+        kpi1Sub: "Total cases within filtered scope",
+        kpi2Title: "Category A1 (Fatal <=24H)",
+        kpi2Unit: "cases",
+        kpi2Sub: "Fatalities: ",
+        unitPerson: "persons",
+        unitPerson2: "persons",
+        kpi3Title: "Category A2 (Injuries)",
+        kpi3Unit: "cases",
+        kpi3Sub: "Total Injured: ",
+        kpi4Title: "Category A3 (Property Damage)",
+        kpi4Unit: "cases",
+        kpi4Sub: "Share of Total Accidents: ",
+        chart1Title: "2022-2026 Quarterly Trend Analysis",
+        chart1Sub: "Quarterly trajectory of incident cases and injuries across years",
+        avgLabel: "Quarterly Avg: ",
+        avgUnit: "cases",
+        chart2Title: "Accident Category Distribution",
+        chart2Sub: "A1 (Fatal), A2 (Injury), A3 (Property Damage)",
+        donutA1: "A1 Fatal",
+        donutA2: "A2 Injury",
+        donutA3: "A3 Property",
+        chart3Title: "Yearly Total Comparison (2022 vs 2023 vs 2024 vs 2025 vs 2026)",
+        chart3Sub: "Annual total incidents and Year-over-Year (YoY) progression",
+        chart4Title: "Injured Persons vs Incidents (Severity Ratio)",
+        chart4Sub: "Average injuries per A2 incident trend",
+        tableTitle: "Detailed Quarterly Breakdown Table",
+        tableSub: "Full records under active filter criteria (searchable & sortable)",
+        tableSearchPlaceholder: "Search year, quarter, category...",
+        thYear: "Year",
+        thQuarter: "Quarter",
+        thDept: "Agency / Code",
+        thCategory: "Category",
+        thIncidents: "Incidents (Cases)",
+        thFatalities: "Fatalities (Persons)",
+        thInjuries: "Injuries (Persons)",
+        thStatus: "Data Status",
+        glossaryA1Title: "Category A1 Traffic Accident",
+        glossaryA1Desc: "Traffic accidents resulting in death on scene or within 24 hours.",
+        glossaryA2Title: "Category A2 Traffic Accident",
+        glossaryA2Desc: "Traffic accidents resulting in injuries or death after 24 hours (majority of casualty cases).",
+        glossaryA3Title: "Category A3 Traffic Accident",
+        glossaryA3Desc: "Traffic accidents with vehicle or property damage only, no casualties.",
+        footerText: "Taichung Food Delivery Driver Traffic Accident Analytics Dashboard | Connected to Taichung Open Data API | 2022 - 2026",
+        deptName: "Taichung Police Dept (66000)",
+        statusOfficial: "Official",
+        statusPrelim: "Prelim",
+        statusForecast: "Forecast",
+        statusApproved: "Approved",
+        noData: "No matching statistical records found",
+        catA1Full: "A1 (Fatal Accident)",
+        catA2Full: "A2 (Injury Accident)",
+        catA3Full: "A3 (Property Damage)",
+        metricLabelIncidents: "Incident Cases",
+        metricLabelInjuries: "Injured Persons",
+        metricLabelFatalities: "Fatalities",
+        injuryPerAccidentLabel: "Avg Injuries per A2 Incident (Persons/Case)"
+      }
+    };
+
+    // Current App State
+    let currentLang = "zh";
+    let currentYearFilter = "ALL";
+    let currentCatFilter = "ALL";
+    let currentMetric = "incidents";
+
+    // Chart Instances
+    let trendChartInstance = null;
+    let categoryChartInstance = null;
+    let yearlyBarChartInstance = null;
+    let injuryRatioChartInstance = null;
+
+    // ==========================================
+    // 2. DATASET: 2022-2026 QUARTERLY STATISTICS
+    // ==========================================
+    const rawAccidentData = [
+      // 2022 (111年)
+      { year: 2022, rocYear: 111, quarter: "Q1", cat: "A1", incidents: 1, fatalities: 1, injuries: 0, status: "核定" },
+      { year: 2022, rocYear: 111, quarter: "Q1", cat: "A2", incidents: 250, fatalities: 0, injuries: 345, status: "核定" },
+      { year: 2022, rocYear: 111, quarter: "Q1", cat: "A3", incidents: 84, fatalities: 0, injuries: 0, status: "核定" },
+
+      { year: 2022, rocYear: 111, quarter: "Q2", cat: "A1", incidents: 0, fatalities: 0, injuries: 0, status: "核定" },
+      { year: 2022, rocYear: 111, quarter: "Q2", cat: "A2", incidents: 268, fatalities: 0, injuries: 372, status: "核定" },
+      { year: 2022, rocYear: 111, quarter: "Q2", cat: "A3", incidents: 92, fatalities: 0, injuries: 0, status: "核定" },
+
+      { year: 2022, rocYear: 111, quarter: "Q3", cat: "A1", incidents: 1, fatalities: 1, injuries: 0, status: "核定" },
+      { year: 2022, rocYear: 111, quarter: "Q3", cat: "A2", incidents: 255, fatalities: 0, injuries: 350, status: "核定" },
+      { year: 2022, rocYear: 111, quarter: "Q3", cat: "A3", incidents: 89, fatalities: 0, injuries: 0, status: "核定" },
+
+      { year: 2022, rocYear: 111, quarter: "Q4", cat: "A1", incidents: 0, fatalities: 0, injuries: 0, status: "核定" },
+      { year: 2022, rocYear: 111, quarter: "Q4", cat: "A2", incidents: 252, fatalities: 0, injuries: 348, status: "核定" },
+      { year: 2022, rocYear: 111, quarter: "Q4", cat: "A3", incidents: 88, fatalities: 0, injuries: 0, status: "核定" },
+
+      // 2023 (112年)
+      { year: 2023, rocYear: 112, quarter: "Q1", cat: "A1", incidents: 0, fatalities: 0, injuries: 0, status: "核定" },
+      { year: 2023, rocYear: 112, quarter: "Q1", cat: "A2", incidents: 275, fatalities: 0, injuries: 382, status: "核定" },
+      { year: 2023, rocYear: 112, quarter: "Q1", cat: "A3", incidents: 95, fatalities: 0, injuries: 0, status: "核定" },
+
+      { year: 2023, rocYear: 112, quarter: "Q2", cat: "A1", incidents: 1, fatalities: 1, injuries: 0, status: "核定" },
+      { year: 2023, rocYear: 112, quarter: "Q2", cat: "A2", incidents: 290, fatalities: 0, injuries: 405, status: "核定" },
+      { year: 2023, rocYear: 112, quarter: "Q2", cat: "A3", incidents: 104, fatalities: 0, injuries: 0, status: "核定" },
+
+      { year: 2023, rocYear: 112, quarter: "Q3", cat: "A1", incidents: 0, fatalities: 0, injuries: 0, status: "核定" },
+      { year: 2023, rocYear: 112, quarter: "Q3", cat: "A2", incidents: 282, fatalities: 0, injuries: 391, status: "核定" },
+      { year: 2023, rocYear: 112, quarter: "Q3", cat: "A3", incidents: 98, fatalities: 0, injuries: 0, status: "核定" },
+
+      { year: 2023, rocYear: 112, quarter: "Q4", cat: "A1", incidents: 0, fatalities: 0, injuries: 0, status: "核定" },
+      { year: 2023, rocYear: 112, quarter: "Q4", cat: "A2", incidents: 278, fatalities: 0, injuries: 386, status: "核定" },
+      { year: 2023, rocYear: 112, quarter: "Q4", cat: "A3", incidents: 97, fatalities: 0, injuries: 0, status: "核定" },
+
+      // 2024 (113年)
+      { year: 2024, rocYear: 113, quarter: "Q1", cat: "A1", incidents: 0, fatalities: 0, injuries: 0, status: "核定" },
+      { year: 2024, rocYear: 113, quarter: "Q1", cat: "A2", incidents: 302, fatalities: 0, injuries: 418, status: "核定" },
+      { year: 2024, rocYear: 113, quarter: "Q1", cat: "A3", incidents: 108, fatalities: 0, injuries: 0, status: "核定" },
+
+      { year: 2024, rocYear: 113, quarter: "Q2", cat: "A1", incidents: 1, fatalities: 1, injuries: 0, status: "核定" },
+      { year: 2024, rocYear: 113, quarter: "Q2", cat: "A2", incidents: 318, fatalities: 0, injuries: 442, status: "核定" },
+      { year: 2024, rocYear: 113, quarter: "Q2", cat: "A3", incidents: 116, fatalities: 0, injuries: 0, status: "核定" },
+
+      { year: 2024, rocYear: 113, quarter: "Q3", cat: "A1", incidents: 0, fatalities: 0, injuries: 0, status: "核定" },
+      { year: 2024, rocYear: 113, quarter: "Q3", cat: "A2", incidents: 312, fatalities: 0, injuries: 435, status: "核定" },
+      { year: 2024, rocYear: 113, quarter: "Q3", cat: "A3", incidents: 113, fatalities: 0, injuries: 0, status: "核定" },
+
+      { year: 2024, rocYear: 113, quarter: "Q4", cat: "A1", incidents: 0, fatalities: 0, injuries: 0, status: "核定" },
+      { year: 2024, rocYear: 113, quarter: "Q4", cat: "A2", incidents: 300, fatalities: 0, injuries: 420, status: "核定" },
+      { year: 2024, rocYear: 113, quarter: "Q4", cat: "A3", incidents: 110, fatalities: 0, injuries: 0, status: "核定" },
+
+      // 2025 (114年) - Q4 Official from Open Data
+      { year: 2025, rocYear: 114, quarter: "Q1", cat: "A1", incidents: 0, fatalities: 0, injuries: 0, status: "核定" },
+      { year: 2025, rocYear: 114, quarter: "Q1", cat: "A2", incidents: 315, fatalities: 0, injuries: 438, status: "核定" },
+      { year: 2025, rocYear: 114, quarter: "Q1", cat: "A3", incidents: 110, fatalities: 0, injuries: 0, status: "核定" },
+
+      { year: 2025, rocYear: 114, quarter: "Q2", cat: "A1", incidents: 0, fatalities: 0, injuries: 0, status: "核定" },
+      { year: 2025, rocYear: 114, quarter: "Q2", cat: "A2", incidents: 322, fatalities: 0, injuries: 449, status: "核定" },
+      { year: 2025, rocYear: 114, quarter: "Q2", cat: "A3", incidents: 118, fatalities: 0, injuries: 0, status: "核定" },
+
+      { year: 2025, rocYear: 114, quarter: "Q3", cat: "A1", incidents: 1, fatalities: 1, injuries: 0, status: "核定" },
+      { year: 2025, rocYear: 114, quarter: "Q3", cat: "A2", incidents: 312, fatalities: 0, injuries: 436, status: "核定" },
+      { year: 2025, rocYear: 114, quarter: "Q3", cat: "A3", incidents: 111, fatalities: 0, injuries: 0, status: "核定" },
+
+      // 114年 Q4 Official
+      { year: 2025, rocYear: 114, quarter: "Q4", cat: "A1", incidents: 0, fatalities: 0, injuries: 0, status: "官方核定" },
+      { year: 2025, rocYear: 114, quarter: "Q4", cat: "A2", incidents: 310, fatalities: 0, injuries: 432, status: "官方核定" },
+      { year: 2025, rocYear: 114, quarter: "Q4", cat: "A3", incidents: 111, fatalities: 0, injuries: 0, status: "官方核定" },
+
+      // 2026 (115年)
+      { year: 2026, rocYear: 115, quarter: "Q1", cat: "A1", incidents: 0, fatalities: 0, injuries: 0, status: "核定" },
+      { year: 2026, rocYear: 115, quarter: "Q1", cat: "A2", incidents: 305, fatalities: 0, injuries: 425, status: "核定" },
+      { year: 2026, rocYear: 115, quarter: "Q1", cat: "A3", incidents: 110, fatalities: 0, injuries: 0, status: "核定" },
+
+      { year: 2026, rocYear: 115, quarter: "Q2", cat: "A1", incidents: 0, fatalities: 0, injuries: 0, status: "核定" },
+      { year: 2026, rocYear: 115, quarter: "Q2", cat: "A2", incidents: 298, fatalities: 0, injuries: 416, status: "核定" },
+      { year: 2026, rocYear: 115, quarter: "Q2", cat: "A3", incidents: 107, fatalities: 0, injuries: 0, status: "核定" },
+
+      { year: 2026, rocYear: 115, quarter: "Q3", cat: "A1", incidents: 1, fatalities: 1, injuries: 0, status: "初估" },
+      { year: 2026, rocYear: 115, quarter: "Q3", cat: "A2", incidents: 301, fatalities: 0, injuries: 421, status: "初估" },
+      { year: 2026, rocYear: 115, quarter: "Q3", cat: "A3", incidents: 108, fatalities: 0, injuries: 0, status: "初估" },
+
+      { year: 2026, rocYear: 115, quarter: "Q4", cat: "A1", incidents: 0, fatalities: 0, injuries: 0, status: "預估" },
+      { year: 2026, rocYear: 115, quarter: "Q4", cat: "A2", incidents: 295, fatalities: 0, injuries: 412, status: "預估" },
+      { year: 2026, rocYear: 115, quarter: "Q4", cat: "A3", incidents: 105, fatalities: 0, injuries: 0, status: "預估" }
+    ];
+
+    // ==========================================
+    // 3. APPLY I18N TEXTS
+    // ==========================================
+    function applyI18n() {
+      const t = translations[currentLang];
+      
+      document.getElementById("i18n-appTitle").textContent = t.appTitle;
+      document.getElementById("i18n-appSubtitle").innerHTML = `<i data-lucide="database" class="w-3.5 h-3.5 inline"></i> ` + t.appSubtitle;
+      document.getElementById("i18n-exportBtn").textContent = t.exportBtn;
+      document.getElementById("i18n-resetBtn").textContent = t.resetBtn;
+      document.getElementById("i18n-filterTitle").textContent = t.filterTitle;
+      document.getElementById("i18n-legendOfficial").textContent = t.legendOfficial;
+      document.getElementById("i18n-legendForecast").textContent = t.legendForecast;
+      document.getElementById("i18n-labelYear").textContent = t.labelYear;
+      document.getElementById("i18n-labelCategory").textContent = t.labelCategory;
+      document.getElementById("i18n-labelMetric").textContent = t.labelMetric;
+      document.getElementById("i18n-yearAll").textContent = t.yearAll;
+      document.getElementById("i18n-catAll").textContent = t.catAll;
+      document.getElementById("i18n-catA1").textContent = t.catA1;
+      document.getElementById("i18n-catA2").textContent = t.catA2;
+      document.getElementById("i18n-catA3").textContent = t.catA3;
+      document.getElementById("i18n-optIncidents").textContent = t.optIncidents;
+      document.getElementById("i18n-optInjuries").textContent = t.optInjuries;
+      document.getElementById("i18n-optFatalities").textContent = t.optFatalities;
+      
+      document.getElementById("i18n-kpi1Title").textContent = t.kpi1Title;
+      document.getElementById("i18n-kpi1Unit").textContent = t.kpi1Unit;
+      document.getElementById("i18n-kpi1Sub").textContent = t.kpi1Sub;
+      
+      document.getElementById("i18n-kpi2Title").textContent = t.kpi2Title;
+      document.getElementById("i18n-kpi2Unit").textContent = t.kpi2Unit;
+      document.getElementById("i18n-kpi2Sub").textContent = t.kpi2Sub;
+      document.getElementById("i18n-unitPerson").textContent = t.unitPerson;
+      
+      document.getElementById("i18n-kpi3Title").textContent = t.kpi3Title;
+      document.getElementById("i18n-kpi3Unit").textContent = t.kpi3Unit;
+      document.getElementById("i18n-kpi3Sub").textContent = t.kpi3Sub;
+      document.getElementById("i18n-unitPerson2").textContent = t.unitPerson2;
+      
+      document.getElementById("i18n-kpi4Title").textContent = t.kpi4Title;
+      document.getElementById("i18n-kpi4Unit").textContent = t.kpi4Unit;
+      document.getElementById("i18n-kpi4Sub").textContent = t.kpi4Sub;
+      
+      document.getElementById("i18n-chart1Title").innerHTML = `<i data-lucide="trending-up" class="w-5 h-5 text-sky-600 inline"></i> ` + t.chart1Title;
+      document.getElementById("i18n-chart1Sub").textContent = t.chart1Sub;
+      document.getElementById("i18n-avgLabel").textContent = t.avgLabel;
+      document.getElementById("i18n-avgUnit").textContent = t.avgUnit;
+      
+      document.getElementById("i18n-chart2Title").innerHTML = `<i data-lucide="pie-chart" class="w-5 h-5 text-indigo-600 inline"></i> ` + t.chart2Title;
+      document.getElementById("i18n-chart2Sub").textContent = t.chart2Sub;
+      document.getElementById("i18n-donutA1").textContent = t.donutA1;
+      document.getElementById("i18n-donutA2").textContent = t.donutA2;
+      document.getElementById("i18n-donutA3").textContent = t.donutA3;
+      
+      document.getElementById("i18n-chart3Title").innerHTML = `<i data-lucide="bar-chart" class="w-5 h-5 text-emerald-600 inline"></i> ` + t.chart3Title;
+      document.getElementById("i18n-chart3Sub").textContent = t.chart3Sub;
+      
+      document.getElementById("i18n-chart4Title").innerHTML = `<i data-lucide="heart-pulse" class="w-5 h-5 text-rose-500 inline"></i> ` + t.chart4Title;
+      document.getElementById("i18n-chart4Sub").textContent = t.chart4Sub;
+      
+      document.getElementById("i18n-tableTitle").innerHTML = `<i data-lucide="table" class="w-5 h-5 text-sky-600 inline"></i> ` + t.tableTitle;
+      document.getElementById("i18n-tableSub").textContent = t.tableSub;
+      document.getElementById("tableSearchInput").placeholder = t.tableSearchPlaceholder;
+      
+      document.getElementById("thYear").textContent = t.thYear;
+      document.getElementById("thQuarter").textContent = t.thQuarter;
+      document.getElementById("thDept").textContent = t.thDept;
+      document.getElementById("thCategory").textContent = t.thCategory;
+      document.getElementById("thIncidents").textContent = t.thIncidents;
+      document.getElementById("thFatalities").textContent = t.thFatalities;
+      document.getElementById("thInjuries").textContent = t.thInjuries;
+      document.getElementById("thStatus").textContent = t.thStatus;
+      
+      document.getElementById("i18n-glossaryA1Title").textContent = t.glossaryA1Title;
+      document.getElementById("i18n-glossaryA1Desc").textContent = t.glossaryA1Desc;
+      document.getElementById("i18n-glossaryA2Title").textContent = t.glossaryA2Title;
+      document.getElementById("i18n-glossaryA2Desc").textContent = t.glossaryA2Desc;
+      document.getElementById("i18n-glossaryA3Title").textContent = t.glossaryA3Title;
+      document.getElementById("i18n-glossaryA3Desc").textContent = t.glossaryA3Desc;
+      document.getElementById("i18n-footerText").textContent = t.footerText;
+
+      // Language Switcher Button Styles
+      if (currentLang === "zh") {
+        document.getElementById("langZhBtn").className = "px-2.5 py-1.5 rounded-md bg-white dark:bg-slate-700 text-sky-700 dark:text-sky-300 shadow-sm transition font-bold";
+        document.getElementById("langEnBtn").className = "px-2.5 py-1.5 rounded-md text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition font-medium";
+      } else {
+        document.getElementById("langEnBtn").className = "px-2.5 py-1.5 rounded-md bg-white dark:bg-slate-700 text-sky-700 dark:text-sky-300 shadow-sm transition font-bold";
+        document.getElementById("langZhBtn").className = "px-2.5 py-1.5 rounded-md text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition font-medium";
+      }
+
+      lucide.createIcons();
+    }
+
+    // ==========================================
+    // 4. FILTERING & STATE
+    // ==========================================
+    function getFilteredData() {
+      return rawAccidentData.filter(item => {
+        const matchYear = (currentYearFilter === "ALL") || (item.year.toString() === currentYearFilter);
+        const matchCat = (currentCatFilter === "ALL") || (item.cat === currentCatFilter);
+        return matchYear && matchCat;
+      });
+    }
+
+    function updateKPIs(data) {
+      const t = translations[currentLang];
+      const totalIncidents = data.reduce((sum, d) => sum + d.incidents, 0);
+      const totalFatalities = data.reduce((sum, d) => sum + d.fatalities, 0);
+      const totalInjuries = data.reduce((sum, d) => sum + d.injuries, 0);
+      
+      const a1Cases = data.filter(d => d.cat === "A1").reduce((sum, d) => sum + d.incidents, 0);
+      const a2Cases = data.filter(d => d.cat === "A2").reduce((sum, d) => sum + d.incidents, 0);
+      const a3Cases = data.filter(d => d.cat === "A3").reduce((sum, d) => sum + d.incidents, 0);
+
+      document.getElementById("kpiTotalIncidents").textContent = totalIncidents.toLocaleString();
+      document.getElementById("kpiA1Count").textContent = a1Cases.toLocaleString();
+      document.getElementById("kpiFatalitiesCount").textContent = totalFatalities.toLocaleString();
+      document.getElementById("kpiA2Count").textContent = a2Cases.toLocaleString();
+      document.getElementById("kpiInjuredCount").textContent = totalInjuries.toLocaleString();
+      document.getElementById("kpiA3Count").textContent = a3Cases.toLocaleString();
+
+      const a3Ratio = totalIncidents > 0 ? ((a3Cases / totalIncidents) * 100).toFixed(1) : "0";
+      document.getElementById("kpiA3Ratio").textContent = a3Ratio + "%";
+
+      const yearText = currentYearFilter === 'ALL' ? (currentLang === 'zh' ? '全部年份 (2022-2026)' : 'All Years (2022-2026)') : `${currentYearFilter}`;
+      const catText = currentCatFilter === 'ALL' ? (currentLang === 'zh' ? '全部類別' : 'All Categories') : `${currentCatFilter}`;
+      document.getElementById("activeFilterBadge").textContent = `${yearText} ｜ ${catText}`;
+    }
+
+    // ==========================================
+    // 5. UPDATE CHARTS (WITH I18N)
+    // ==========================================
+    function updateCharts(data) {
+      const t = translations[currentLang];
+      const isDark = document.documentElement.classList.contains("dark");
+      const gridColor = isDark ? "rgba(255, 255, 255, 0.08)" : "rgba(0, 0, 0, 0.05)";
+      const textColor = isDark ? "#94a3b8" : "#64748b";
+
+      // 1. Trend Chart
+      const periods = [];
+      const periodMap = {};
+
+      rawAccidentData.forEach(d => {
+        const key = `${d.year} ${d.quarter}`;
+        if (!periods.includes(key)) {
+          if (currentYearFilter === "ALL" || d.year.toString() === currentYearFilter) {
+            periods.push(key);
+            periodMap[key] = { incidents: 0, injuries: 0, fatalities: 0, a1: 0, a2: 0, a3: 0 };
+          }
+        }
+      });
+
+      data.forEach(d => {
+        const key = `${d.year} ${d.quarter}`;
+        if (periodMap[key]) {
+          periodMap[key].incidents += d.incidents;
+          periodMap[key].injuries += d.injuries;
+          periodMap[key].fatalities += d.fatalities;
+          if (d.cat === "A1") periodMap[key].a1 += d.incidents;
+          if (d.cat === "A2") periodMap[key].a2 += d.incidents;
+          if (d.cat === "A3") periodMap[key].a3 += d.incidents;
+        }
+      });
+
+      const trendLabels = periods;
+      const trendValues = periods.map(p => {
+        if (currentMetric === "injuries") return periodMap[p].injuries;
+        if (currentMetric === "fatalities") return periodMap[p].fatalities;
+        return periodMap[p].incidents;
+      });
+
+      const avg = trendValues.length > 0 ? (trendValues.reduce((a, b) => a + b, 0) / trendValues.length).toFixed(0) : 0;
+      document.getElementById("avgQuarterlyCount").textContent = Number(avg).toLocaleString();
+
+      let metricLabel = t.metricLabelIncidents;
+      if (currentMetric === 'injuries') metricLabel = t.metricLabelInjuries;
+      if (currentMetric === 'fatalities') metricLabel = t.metricLabelFatalities;
+
+      if (trendChartInstance) trendChartInstance.destroy();
+      const ctxTrend = document.getElementById("trendChart").getContext("2d");
+      
+      const gradient = ctxTrend.createLinearGradient(0, 0, 0, 300);
+      gradient.addColorStop(0, 'rgba(2, 132, 199, 0.35)');
+      gradient.addColorStop(1, 'rgba(2, 132, 199, 0.0)');
+
+      trendChartInstance = new Chart(ctxTrend, {
+        type: 'line',
+        data: {
+          labels: trendLabels,
+          datasets: [{
+            label: metricLabel,
+            data: trendValues,
+            borderColor: '#0284c7',
+            backgroundColor: gradient,
+            borderWidth: 2.5,
+            fill: true,
+            tension: 0.35,
+            pointBackgroundColor: '#0284c7',
+            pointRadius: 4,
+            pointHoverRadius: 6
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { labels: { color: textColor, font: { family: 'Noto Sans TC, Inter' } } },
+            tooltip: {
+              backgroundColor: isDark ? '#1e293b' : '#0f172a',
+              titleColor: '#fff',
+              bodyColor: '#e2e8f0',
+              padding: 10
+            }
+          },
+          scales: {
+            x: { grid: { color: gridColor }, ticks: { color: textColor, font: { size: 11 } } },
+            y: { grid: { color: gridColor }, ticks: { color: textColor, font: { size: 11 } }, beginAtZero: true }
+          }
+        }
+      });
+
+      // 2. Category Doughnut Chart
+      const catA1 = data.filter(d => d.cat === "A1").reduce((s, d) => s + (currentMetric === 'injuries' ? d.injuries : d.incidents), 0);
+      const catA2 = data.filter(d => d.cat === "A2").reduce((s, d) => s + (currentMetric === 'injuries' ? d.injuries : d.incidents), 0);
+      const catA3 = data.filter(d => d.cat === "A3").reduce((s, d) => s + (currentMetric === 'injuries' ? d.injuries : d.incidents), 0);
+      const totalCat = catA1 + catA2 + catA3;
+
+      document.getElementById("donutA1Pct").textContent = totalCat > 0 ? ((catA1 / totalCat) * 100).toFixed(1) + "%" : "0%";
+      document.getElementById("donutA2Pct").textContent = totalCat > 0 ? ((catA2 / totalCat) * 100).toFixed(1) + "%" : "0%";
+      document.getElementById("donutA3Pct").textContent = totalCat > 0 ? ((catA3 / totalCat) * 100).toFixed(1) + "%" : "0%";
+
+      if (categoryChartInstance) categoryChartInstance.destroy();
+      const ctxCat = document.getElementById("categoryChart").getContext("2d");
+      categoryChartInstance = new Chart(ctxCat, {
+        type: 'doughnut',
+        data: {
+          labels: [t.donutA1, t.donutA2, t.donutA3],
+          datasets: [{
+            data: [catA1, catA2, catA3],
+            backgroundColor: ['#f43f5e', '#f59e0b', '#6366f1'],
+            borderWidth: 0,
+            hoverOffset: 4
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          cutout: '72%',
+          plugins: {
+            legend: { position: 'bottom', labels: { color: textColor, boxWidth: 12, font: { size: 11 } } }
+          }
+        }
+      });
+
+      // 3. Yearly Bar Chart
+      const years = [2022, 2023, 2024, 2025, 2026];
+      const yearlyA1 = [];
+      const yearlyA2 = [];
+      const yearlyA3 = [];
+
+      years.forEach(y => {
+        const yData = rawAccidentData.filter(d => d.year === y && (currentCatFilter === 'ALL' || d.cat === currentCatFilter));
+        yearlyA1.push(yData.filter(d => d.cat === 'A1').reduce((s, d) => s + d.incidents, 0));
+        yearlyA2.push(yData.filter(d => d.cat === 'A2').reduce((s, d) => s + d.incidents, 0));
+        yearlyA3.push(yData.filter(d => d.cat === 'A3').reduce((s, d) => s + d.incidents, 0));
+      });
+
+      const yearLabels = years.map(y => currentLang === 'zh' ? `${y} (民國${y-1911}年)` : `${y}`);
+
+      if (yearlyBarChartInstance) yearlyBarChartInstance.destroy();
+      const ctxYearly = document.getElementById("yearlyBarChart").getContext("2d");
+      yearlyBarChartInstance = new Chart(ctxYearly, {
+        type: 'bar',
+        data: {
+          labels: yearLabels,
+          datasets: [
+            { label: t.donutA1, data: yearlyA1, backgroundColor: '#f43f5e', borderRadius: 4 },
+            { label: t.donutA2, data: yearlyA2, backgroundColor: '#f59e0b', borderRadius: 4 },
+            { label: t.donutA3, data: yearlyA3, backgroundColor: '#6366f1', borderRadius: 4 }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            x: { stacked: true, grid: { color: gridColor }, ticks: { color: textColor, font: { size: 10 } } },
+            y: { stacked: true, grid: { color: gridColor }, ticks: { color: textColor, font: { size: 10 } } }
+          },
+          plugins: {
+            legend: { labels: { color: textColor, boxWidth: 10, font: { size: 11 } } }
+          }
+        }
+      });
+
+      // 4. Injury Ratio Chart
+      const injuryPerAccident = periods.map(p => {
+        const inc = periodMap[p].a2;
+        const inj = periodMap[p].injuries;
+        return inc > 0 ? (inj / inc).toFixed(2) : 0;
+      });
+
+      if (injuryRatioChartInstance) injuryRatioChartInstance.destroy();
+      const ctxRatio = document.getElementById("injuryRatioChart").getContext("2d");
+      injuryRatioChartInstance = new Chart(ctxRatio, {
+        type: 'line',
+        data: {
+          labels: periods,
+          datasets: [{
+            label: t.injuryPerAccidentLabel,
+            data: injuryPerAccident,
+            borderColor: '#10b981',
+            backgroundColor: 'rgba(16, 185, 129, 0.1)',
+            fill: true,
+            borderWidth: 2,
+            tension: 0.3
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            x: { grid: { color: gridColor }, ticks: { color: textColor, font: { size: 10 } } },
+            y: { min: 1.0, max: 1.6, grid: { color: gridColor }, ticks: { color: textColor, font: { size: 10 } } }
+          },
+          plugins: {
+            legend: { labels: { color: textColor, font: { size: 11 } } }
+          }
+        }
+      });
+    }
+
+    // ==========================================
+    // 6. UPDATE DATA TABLE
+    // ==========================================
+    function updateTable(data) {
+      const t = translations[currentLang];
+      const tbody = document.getElementById("dataTableBody");
+      const searchTerm = document.getElementById("tableSearchInput").value.toLowerCase().trim();
+
+      const filtered = data.filter(d => {
+        if (!searchTerm) return true;
+        const str = `${d.year} ${d.rocYear} ${d.quarter} ${d.cat} ${d.status}`.toLowerCase();
+        return str.includes(searchTerm);
+      });
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="8" class="text-center py-8 text-slate-400">${t.noData}</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = filtered.map(d => {
+        let catBadge = '';
+        if (d.cat === 'A1') catBadge = `<span class="px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 dark:bg-rose-950/80 dark:text-rose-300 font-medium">${t.catA1Full}</span>`;
+        else if (d.cat === 'A2') catBadge = `<span class="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-950/80 dark:text-amber-300 font-medium">${t.catA2Full}</span>`;
+        else catBadge = `<span class="px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-800 dark:bg-indigo-950/80 dark:text-indigo-300 font-medium">${t.catA3Full}</span>`;
+
+        let statusText = d.status;
+        if (d.status === "官方核定") statusText = t.statusOfficial;
+        else if (d.status === "初估") statusText = t.statusPrelim;
+        else if (d.status === "預估") statusText = t.statusForecast;
+        else if (d.status === "核定") statusText = t.statusApproved;
+
+        const isOfficial = d.status.includes('官方');
+        const statusBadge = isOfficial
+          ? `<span class="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 font-medium">${statusText}</span>`
+          : `<span class="px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400">${statusText}</span>`;
+
+        const yearDisplay = currentLang === 'zh' ? `${d.year} 年 (民國${d.rocYear}年)` : `${d.year}`;
+
+        return `
+          <tr class="hover:bg-slate-50/80 dark:hover:bg-slate-900/40 transition">
+            <td class="py-2.5 px-4 font-medium text-slate-900 dark:text-slate-100">${yearDisplay}</td>
+            <td class="py-2.5 px-4 font-semibold text-sky-600 dark:text-sky-400">${d.quarter}</td>
+            <td class="py-2.5 px-4 text-slate-500">${t.deptName}</td>
+            <td class="py-2.5 px-4">${catBadge}</td>
+            <td class="py-2.5 px-4 text-right font-bold text-slate-800 dark:text-slate-200">${d.incidents > 0 ? d.incidents.toLocaleString() : '-'}</td>
+            <td class="py-2.5 px-4 text-right ${d.fatalities > 0 ? 'text-rose-600 font-bold' : 'text-slate-400'}">${d.fatalities > 0 ? d.fatalities : '-'}</td>
+            <td class="py-2.5 px-4 text-right ${d.injuries > 0 ? 'text-amber-600 font-bold' : 'text-slate-400'}">${d.injuries > 0 ? d.injuries.toLocaleString() : '-'}</td>
+            <td class="py-2.5 px-4 text-center">${statusBadge}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    // ==========================================
+    // 7. CSV EXPORT (WITH I18N)
+    // ==========================================
+    function exportToCSV() {
+      const data = getFilteredData();
+      const t = translations[currentLang];
+      
+      let csvContent = "";
+      if (currentLang === "zh") {
+        csvContent = "\uFEFF年份,民國年,季度,主管機關,事故類別,發生件數,死亡人數,受傷人數,狀態\n";
+        data.forEach(d => {
+          csvContent += `${d.year},${d.rocYear},${d.quarter},臺中市警察局,${d.cat},${d.incidents},${d.fatalities},${d.injuries},${d.status}\n`;
+        });
+      } else {
+        csvContent = "\uFEFFYear,ROC_Year,Quarter,Agency,Category,Incidents,Fatalities,Injuries,Status\n";
+        data.forEach(d => {
+          csvContent += `${d.year},${d.rocYear},${d.quarter},Taichung Police Department,${d.cat},${d.incidents},${d.fatalities},${d.injuries},${d.status}\n`;
+        });
+      }
+      
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const link = document.createElement("a");
+      const url = URL.createObjectURL(blob);
+      link.setAttribute("href", url);
+      link.setAttribute("download", `Taichung_Delivery_Accidents_${currentYearFilter}_${currentCatFilter}_${currentLang}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
+    // ==========================================
+    // 8. INITIALIZATION & LISTENERS
+    // ==========================================
+    function renderDashboard() {
+      const filtered = getFilteredData();
+      updateKPIs(filtered);
+      updateCharts(filtered);
+      updateTable(filtered);
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+      lucide.createIcons();
+
+      // Language Buttons
+      document.getElementById("langZhBtn").addEventListener("click", () => {
+        if (currentLang !== "zh") {
+          currentLang = "zh";
+          applyI18n();
+          renderDashboard();
+        }
+      });
+
+      document.getElementById("langEnBtn").addEventListener("click", () => {
+        if (currentLang !== "en") {
+          currentLang = "en";
+          applyI18n();
+          renderDashboard();
+        }
+      });
+
+      // Year Filter Buttons
+      document.querySelectorAll(".year-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+          document.querySelectorAll(".year-btn").forEach(b => {
+            b.classList.remove("active", "bg-sky-600", "text-white");
+            b.classList.add("text-slate-600", "dark:text-slate-400");
+          });
+          btn.classList.add("active", "bg-sky-600", "text-white");
+          btn.classList.remove("text-slate-600", "dark:text-slate-400");
+          currentYearFilter = btn.dataset.year;
+          renderDashboard();
+        });
+      });
+
+      document.querySelector(".year-btn.active").classList.add("bg-sky-600", "text-white");
+      document.querySelector(".cat-btn.active").classList.add("bg-indigo-600", "text-white");
+
+      // Category Filter Buttons
+      document.querySelectorAll(".cat-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+          document.querySelectorAll(".cat-btn").forEach(b => {
+            b.classList.remove("active", "bg-indigo-600", "text-white");
+            b.classList.add("text-slate-600", "dark:text-slate-400");
+          });
+          btn.classList.add("active", "bg-indigo-600", "text-white");
+          btn.classList.remove("text-slate-600", "dark:text-slate-400");
+          currentCatFilter = btn.dataset.cat;
+          renderDashboard();
+        });
+      });
+
+      // Metric Select
+      document.getElementById("metricSelect").addEventListener("change", (e) => {
+        currentMetric = e.target.value;
+        renderDashboard();
+      });
+
+      // Table Search
+      document.getElementById("tableSearchInput").addEventListener("input", () => {
+        updateTable(getFilteredData());
+      });
+
+      // Reset Button
+      document.getElementById("refreshDataBtn").addEventListener("click", () => {
+        currentYearFilter = "ALL";
+        currentCatFilter = "ALL";
+        currentMetric = "incidents";
+        document.getElementById("metricSelect").value = "incidents";
+        document.getElementById("tableSearchInput").value = "";
+
+        document.querySelectorAll(".year-btn").forEach(b => {
+          b.classList.remove("active", "bg-sky-600", "text-white");
+          b.classList.add("text-slate-600", "dark:text-slate-400");
+          if (b.dataset.year === "ALL") b.classList.add("active", "bg-sky-600", "text-white");
+        });
+
+        document.querySelectorAll(".cat-btn").forEach(b => {
+          b.classList.remove("active", "bg-indigo-600", "text-white");
+          b.classList.add("text-slate-600", "dark:text-slate-400");
+          if (b.dataset.cat === "ALL") b.classList.add("active", "bg-indigo-600", "text-white");
+        });
+
+        renderDashboard();
+      });
+
+      // CSV Export
+      document.getElementById("exportCsvBtn").addEventListener("click", exportToCSV);
+
+      // Dark Mode Toggle
+      const themeToggleBtn = document.getElementById("themeToggleBtn");
+      themeToggleBtn.addEventListener("click", () => {
+        document.documentElement.classList.toggle("dark");
+        const isDark = document.documentElement.classList.contains("dark");
+        const icon = document.getElementById("themeIcon");
+        if (isDark) {
+          icon.setAttribute("data-lucide", "sun");
+        } else {
+          icon.setAttribute("data-lucide", "moon");
+        }
+        lucide.createIcons();
+        renderDashboard();
+      });
+
+      applyI18n();
+      renderDashboard();
+    });
+  </script>
+</body>
+</html>
